@@ -1,9 +1,10 @@
 # Implementation Plan: Spandan Hospital Web Project
 
-> **Status:** Approved Implementation Roadmap (Future-Ready Monolith)  
+> **Status:** Approved Implementation Roadmap (Reusable Hospital Digital Platform)  
 > **Target:** High-trust public website and lightweight admin dashboard for ~₹30,000 commercial package  
 > **Hosting Target:** Netlify (Commercial Free Tier)  
-> **App Location:** Repository Root with Feature Modules
+> **App Location:** Repository Root with Feature Modules  
+> **Architecture Paradigm:** Core Platform + Hospital Configuration + Optional Feature Modules (Single-Hospital V1 Deployment)
 
 ---
 
@@ -28,12 +29,18 @@ flowchart LR
 - [x] Draft and finalize system architecture, database schema, security policy, failure recovery, deployment, troubleshooting, and handover guides (`/docs/`).
 - [x] Conduct architecture audit against real constraints (two-doctor hospital, beginner solo developer, ₹30,000 package, free-tier tech).
 - [x] Incorporate all approved architectural decisions into project documentation.
+- [x] Formulate **Reusable Hospital Digital Platform** architecture:
+  - **Core Platform:** Reusable public/admin frameworks, auth, enquiries, appointments, rosters, settings, notifications, storage, validation.
+  - **Hospital Configuration:** Decoupled client content (`hospital_settings`, seed files) and design tokens.
+  - **Optional Feature Modules:** Documented future boundaries (WhatsApp, payments, calendar, AI, HIS) with zero speculative code or tables in V1.
+  - **Future Reuse Principle:** "Build reusable foundations, not speculative features."
+  - **Single-Hospital V1 Scope:** No multi-tenant SaaS machinery.
 - [x] Define future-ready modular boundaries and scalability roadmap (`/docs/FUTURE-SCALABILITY.md`).
 
 ---
 
 ### Phase 1: Project Scaffolding & Design Foundation
-*Objective: Set up a clean, minimal Next.js TypeScript project at repository root with Tailwind CSS, design tokens, and base UI components.*
+*Objective: Set up a clean, minimal Next.js TypeScript project at repository root with Tailwind CSS, design tokens, and base UI components decoupled from hardcoded hospital branding.*
 - Initialize Next.js project with App Router, TypeScript, ESLint, and Tailwind CSS directly at **repository root**.
 - Configure `netlify.toml` for Netlify Next.js runtime build.
 - Establish clean directory hierarchy:
@@ -42,7 +49,7 @@ flowchart LR
   - `features/` (8 business modules: `enquiries`, `appointments`, `doctors`, `services`, `testimonials`, `hospital`, `notifications`, `authentication`)
   - `lib/` (config, helpers)
   - `types/` (TypeScript interfaces)
-- Configure design tokens in `app/globals.css` (CSS variables for primary navy, teal, surfaces, radius) and `tailwind.config.ts`.
+- Configure centralized design tokens in `app/globals.css` (CSS variables for primary navy, teal, surfaces, radius) and `tailwind.config.ts`. Components consume tokens so theming is reusable across hospital deployments.
 - Set up base UI primitives (buttons, dialogs, inputs, card layouts, Lucide icons).
 - Maintain `.env.example` and ensure `.gitignore` excludes all secret files and patient data.
 

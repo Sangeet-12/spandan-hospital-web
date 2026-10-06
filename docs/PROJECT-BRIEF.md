@@ -8,29 +8,52 @@
 **Project Goal:** Deliver a premium, fast, trustworthy public web portal paired with an intuitive, lightweight administrative dashboard for hospital staff.  
 **Developer Profile:** Solo beginner developer using Antigravity  
 **Commercial Scope:** Commercial package priced at approximately ₹30,000 (inclusive of first-year domain setup), serving as a showcase-quality client deliverable.  
+**Architecture Paradigm:** **Reusable Hospital Digital Platform** (`CORE PLATFORM + HOSPITAL CONFIGURATION + OPTIONAL FEATURE MODULES`) deployed as a Single-Hospital Modular Monolith for Spandan Hospital.  
 **Core Purpose:** Act as the hospital's **digital front desk** to present services, profile doctors, build patient trust, and reliably capture patient appointment requests and enquiries.
 
 ---
 
 ## 2. Core Philosophy & Working Rules
 
-1. **Not an Enterprise EHR/HMS:**  
-   This project is **not** an electronic health record (EHR) system, billing engine, or pharmacy management platform. It is a modern, high-trust **Digital Front Desk** and content management portal.
-2. **Developer Constraints (Beginner Solo Developer):**  
+1. **Reusable Platform Architecture (Not Multi-Tenant SaaS):**  
+   The application is architected into three distinct layers:
+   - **CORE PLATFORM:** Generic, reusable capabilities (public website framework, admin dashboard framework, authentication, authorization, enquiry management, appointments, doctors, services, testimonials, hospital settings engine, notifications engine, storage, validation, security, error handling, design system). Free of hardcoded hospital content.
+   - **HOSPITAL CONFIGURATION:** Hospital-specific content and styling (name, logo, brand colors, tagline, hero content, imagery, doctors, services, testimonials, phone numbers, WhatsApp, address, emergency number, OPD timings, announcements). Treated as database records or design tokens.
+   - **OPTIONAL FEATURE MODULES:** Future independent extensions (WhatsApp Cloud API, SMS, Payments, Calendar, Patient Portal, Analytics, Non-Clinical AI, HIS Sync). Not implemented in V1; no speculative tables or SDKs.
+   *Single-Hospital V1 Scope:* The initial system is deployed strictly for Spandan Hospital. No multi-tenant SaaS features (no tenant routing, isolation, billing, switching, or administration).
+
+2. **Future Reuse Principle:**  
+   > **"Build reusable foundations, not speculative features."**  
+   > A feature becomes part of the core only when it is needed by the current product (Spandan Hospital) or is clearly reusable infrastructure required by multiple real features. Do not implement something only because it may be useful years later.
+
+3. **Not an Enterprise EHR/HMS:**  
+   This project is **not** an electronic health record (EHR) system, clinical diagnosis tool, billing engine, or pharmacy management platform. It is a modern, high-trust **Digital Front Desk** and operational enquiry portal.
+
+4. **Developer Constraints (Beginner Solo Developer):**  
    Every engineering choice is prioritized for:
    - Simplicity and readability
    - High reliability (zero enquiry loss)
    - Zero or near-zero cost during development
    - Minimal third-party dependencies (no microservices, queues, or Redis)
    - Straightforward local debugging and failure recovery
-3. **Database as the Sole Source of Truth:**  
+
+5. **Database as the Sole Source of Truth:**  
    Enquiries and appointment bookings must be validated, spam-filtered, and committed to PostgreSQL *before* any email or external notification is triggered.
-4. **Structured Content Control:**  
-   Hospital staff manage live website information (doctors, consultation hours, contact numbers, notices) through restricted, structured admin forms—never free-form page builders or raw code.
-5. **Healthcare Data Minimization:**  
+
+6. **Structured Content Control (Strict Safeguards):**  
+   Hospital staff manage live website information (doctors, consultation hours, contact numbers, notices) through restricted, structured admin forms. Staff do **NOT** receive HTML editors, CSS editors, or drag-and-drop page builders. The development team controls layouts and styling; the hospital controls approved structured content.
+
+7. **Healthcare Data Minimization:**  
    Public appointment forms collect only operational contact details and a short reason for visit. The system strictly avoids collecting clinical diagnoses, medical records, or prescriptions.
-6. **Future-Ready Modular Architecture:**  
-   Built as a modular monolith with clear feature boundaries (`/features`) so that optional future capabilities (WhatsApp API, online payments, AI triage, HIS sync) can be added without rewriting the core application.
+
+8. **Integration Boundaries & Resilience:**  
+   External services are kept behind clear service boundaries (Notification Service -> Resend; Appointment Service -> Manual confirmation). Core platform operations remain 100% resilient if external APIs fail or are offline.
+
+9. **Strict Non-Clinical AI Policy:**  
+   Future AI assistance is strictly non-clinical (enquiry categorization, content drafting, FAQ drafting, admin summaries, search assistance). AI is **never** used for medical diagnosis, symptom triage, treatment recommendations, or clinical decisions, and is never a required core dependency.
+
+10. **Design System Reusability:**  
+    Centralized design tokens in `globals.css` (CSS variables) and `tailwind.config.ts` allow re-theming the platform for other hospital clients without altering component code.
 
 ---
 

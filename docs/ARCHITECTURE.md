@@ -1,25 +1,85 @@
 # System Architecture: Spandan Hospital Web Portal
 
-> **Status:** Approved Architecture Specification (Future-Ready Modular Monolith)  
+> **Status:** Approved Architecture Specification (Reusable Hospital Digital Platform)  
 > **Deployment Target:** Netlify (Commercial Free Tier)  
 > **Backend & Storage:** Supabase (PostgreSQL + Auth + Storage)  
-> **Project Layout:** Next.js Monolith with Feature Modules at Repository Root
+> **Project Layout:** Next.js Monolith with Feature Modules at Repository Root  
+> **Architecture Paradigm:** Core Platform + Hospital Configuration + Optional Feature Modules (Single-Hospital V1 Deployment)
 
 ---
 
 ## 1. Overview & Architectural Principles
 
-The Spandan Hospital system is structured as a **clean modular monolith** designed for a two-doctor community hospital and maintained by a solo beginner developer. It avoids unnecessary operational friction, distributed service complexity, and recurrent infrastructure costs.
+The application is engineered as a **Reusable Hospital Digital Platform**, deployed as a clean modular monolith for Spandan Hospital (a doctor-owned community hospital operated by two physicians) and maintained by a solo beginner developer.
+
+### The Architectural Triad
+The system strictly separates concerns into three layers:
+$$\text{Hospital Portal} = \text{CORE PLATFORM} + \text{HOSPITAL CONFIGURATION} + \text{OPTIONAL FEATURE MODULES}$$
+
+1. **CORE PLATFORM:** Reusable, hospital-agnostic platform infrastructure:
+   - Public website framework (navigation, responsive layout, SEO metadata, accessible UI primitives)
+   - Admin dashboard framework (metrics, data tables, status filters, search, CSV export)
+   - Authentication & SSR cookie session management
+   - Role-based authorization (`developer`, `hospital_admin`, `staff`, `doctor`) enforced via Supabase RLS
+   - Enquiry management & phone deduplication
+   - Appointment request pipeline & historical display name freezing (`doctor_name_snapshot`, `service_name_snapshot`)
+   - Doctor roster & schedule models (`draft`, `published`, `archived`)
+   - Services catalog & department models
+   - Testimonial management & privacy filters
+   - Hospital settings management engine
+   - Notification dispatching engine (`PENDING`, `SENT`, `FAILED`)
+   - Media storage pipeline with size/format validation (Supabase Storage)
+   - Input validation (Zod schemas) & bot defense (Cloudflare Turnstile)
+   - Error handling, health diagnostics (`/api/health`), and structured logging
+   - Centralized design system (CSS variable tokens)
+   *None of these core capabilities contain hardcoded Spandan-specific content.*
+
+2. **HOSPITAL CONFIGURATION:** Hospital-specific content and visual identity:
+   - Hospital name, logo, brand colors, tagline
+   - Hero headlines, subtext, and hero imagery
+   - Doctor rosters, qualifications, bios, consultation timings, and portraits
+   - Services, clinical specialties, and department descriptions
+   - Patient testimonials and featured reviews
+   - Emergency phone numbers, front-desk numbers, and WhatsApp hotline
+   - Physical address, Google Maps embed, and operating hours
+   - Hospital photographs and infrastructure galleries
+   - Homepage announcement banners
+   *Rule:* All hospital specifics are treated as configuration, loaded from database tables (`hospital_settings`, `doctors`, `services`, etc.) or defined in centralized design tokens (`globals.css`), never hardcoded in React components.
+
+3. **OPTIONAL FEATURE MODULES:** Independent future enhancements:
+   - WhatsApp Cloud API automated notifications
+   - SMS gateway alerts (DLT-compliant)
+   - Online payment processing (Razorpay / Cashfree)
+   - Doctor calendar integration & real-time slot booking
+   - Patient self-service portal
+   - Advanced operational analytics
+   - AI-assisted administrative tooling (strictly non-clinical)
+   - Hospital Information System (HIS) / EMR sync
+   *Rule:* No speculative database tables or SDKs are added in V1.
+
+### Single-Hospital V1 Scope (No Multi-Tenant SaaS)
+- The initial deployment is strictly a **single-hospital deployment** for Spandan Hospital.
+- **Explicitly Excluded from V1:**
+  - No tenant routing or domain-based tenant resolvers
+  - No tenant isolation middleware or multi-tenant database partitioning
+  - No tenant billing or subscription management
+  - No tenant switching mechanisms
+  - No tenant super-administration dashboards
+- Future hospital deployments will use this exact same repository and architecture as isolated, single-tenant instances with separate configuration and data.
+
+### Future Reuse Principle
+> **"Build reusable foundations, not speculative features."**  
+> A capability becomes part of the core platform only when it is needed by the current product or is clearly reusable infrastructure required by multiple real features. Do not implement something only because it may be useful years later.
 
 ### Core Architectural Axioms
-1. **Single Root Monolith:** Both the public marketing portal and the protected hospital staff dashboard live in a single Next.js project situated directly at the **repository root**.
-2. **Feature Module Boundaries (`/features/`):** Business logic is grouped into self-contained feature folders (`enquiries`, `appointments`, `doctors`, `services`, `testimonials`, `hospital`, `notifications`, `authentication`), preventing UI components from tangling with database queries.
-3. **Layered Separation of Concerns:** A strict, readable flow separates presentation from persistence: `UI -> Server Action -> Schema Validation -> Business Logic -> Data Access -> Supabase`.
-4. **Static Generation & Reliability:** Public patient pages are statically generated with Incremental Static Regeneration (ISR). Normal public visits do not query PostgreSQL directly, ensuring the website remains 100% available even during database maintenance or pauses.
-5. **Database as Single Source of Truth:** Atomic persistence in Supabase PostgreSQL precedes any notification triggers.
-6. **Simple Queue-Free Notifications:** There is **no Redis, Kafka, or background worker**. The system saves the record first (`PENDING`), attempts Resend email with a 3-second timeout, updates to `SENT` or `FAILED`, and allows manual retries from the dashboard.
-7. **No Direct Public REST Inserts:** Anonymous public visitors have no direct `INSERT` permissions on the Supabase REST API. Inbound appointments pass exclusively through a Next.js Server Action that verifies bot tokens, validates input, checks duplicates, and commits via the server client.
-8. **Future-Ready Extensibility:** Clean architectural boundaries allow future additions (WhatsApp Cloud API, online payments, AI assistance, HIS integration) without rewriting the core V1 system.
+1. **Single Root Monolith:** Both the public portal and protected admin dashboard live directly at the repository root (`/app`, `/components`, `/features`, `/lib`, `/types`).
+2. **Feature Module Boundaries (`/features/`):** Business logic is grouped into self-contained modules (`enquiries`, `appointments`, `doctors`, `services`, `testimonials`, `hospital`, `notifications`, `authentication`).
+3. **Layered Separation of Concerns:** Strict single-directional flow: `UI -> Server Action -> Schema Validation -> Business Logic -> Data Access -> Supabase`.
+4. **Static Generation & High Availability:** Public pages are pre-rendered with ISR. Standard patient visits do not trigger live PostgreSQL queries, keeping the site online even during database maintenance.
+5. **Database as Single Source of Truth:** Atomic persistence in Supabase PostgreSQL precedes any notification dispatch.
+6. **Simple Queue-Free Notifications:** Fire-and-record model: save record first (`PENDING`), dispatch Resend email with a 3-second timeout, update status to `SENT` or `FAILED`, allow manual retries from admin dashboard.
+7. **No Direct Public REST Inserts:** Inbound submissions pass exclusively through Server Actions with Turnstile verification and Zod validation.
+8. **Healthcare Data Minimization:** Collect only minimal operational appointment data; never collect medical records, diagnoses, or prescriptions.
 
 ---
 
@@ -203,13 +263,130 @@ sequenceDiagram
 
 ---
 
-## 6. Future Extensibility Boundaries (Documented, Not Built)
+## 6. Integration Boundaries & Service Isolation
 
-Detailed in [/docs/FUTURE-SCALABILITY.md](file:///c:/Spandan%20Hospital%20Web/docs/FUTURE-SCALABILITY.md):
+External providers must be isolated behind clear, modular service boundaries so the core platform never binds directly to third-party vendor APIs:
 
-1. **Future Notifications:** Pluggable provider boundary (`features/notifications/providers/`) enables adding WhatsApp Cloud API or SMS adapters without modifying appointment forms or database tables.
-2. **Future Payments:** Clear boundary between appointment booking and optional payment services (Razorpay/Cashfree). V1 does not install payment SDKs.
-3. **Future AI Scope (Strict Medical Boundary):** Optional advisory layer strictly forbidden from medical diagnosis, symptom triage, treatment recommendations, or clinical decision-making. Future scope is restricted strictly to: enquiry categorization, content drafting, FAQ drafting, administrative summaries, and website search assistance. The core application works 100% even if AI services are unavailable.
-4. **Future HIS / EMR Sync:** Standalone V1 with an outbound integration adapter layer for future clinic management systems.
-5. **Multi-Hospital Reuse:** Single-tenant modular monolith. Design tokens, configurable hospital settings, and versioned migrations allow deploying a second hospital portal in hours without SaaS multi-tenancy complexity.
-6. **Feature Flags:** Future option only. No feature-flag system or `lib/config/features.ts` is built in V1.
+```mermaid
+flowchart TD
+    subgraph CorePlatform["Core Platform Services"]
+        NotifyCore["Notification Service<br/>(notifications.service.ts)"]
+        AppointCore["Appointment Service<br/>(appointments.service.ts)"]
+        PayCore["Payment Service Boundary<br/>(Optional Future Interface)"]
+        AICore["AI Advisory Boundary<br/>(Optional Future Interface)"]
+    end
+
+    subgraph V1Active["Active V1 Integrations"]
+        ResendAdapter["Resend Email Provider<br/>(3s Timeout)"]
+        ManualConfirm["Manual Front-Desk Confirmation<br/>(Phone Call & Direct WhatsApp Link)"]
+    end
+
+    subgraph FutureAdapters["Future Pluggable Modules (Unimplemented)"]
+        WhatsAppAPI["WhatsApp Cloud API Provider"]
+        SMSGateway["DLT SMS Provider"]
+        CalendarSync["Doctor Calendar Provider"]
+        HISAdapter["HIS / EMR Sync Adapter"]
+        RazorpayAdapter["Razorpay / Cashfree Gateway"]
+        NonClinicalAI["Non-Clinical AI Assistant"]
+    end
+
+    NotifyCore --> ResendAdapter
+    NotifyCore -.->|Future Plug-in| WhatsAppAPI
+    NotifyCore -.->|Future Plug-in| SMSGateway
+
+    AppointCore --> ManualConfirm
+    AppointCore -.->|Future Plug-in| CalendarSync
+    AppointCore -.->|Future Plug-in| HISAdapter
+
+    PayCore -.->|Future Plug-in| RazorpayAdapter
+    AICore -.->|Future Plug-in| NonClinicalAI
+```
+
+### Boundary Isolation Principles:
+1. **Notification Boundary:**
+   - V1: `Notification Service -> Resend Email API` (3-second timeout, fire-and-record).
+   - Future: `Notification Service -> Resend, WhatsApp, SMS`.
+   - The UI forms and database tables remain completely unaware of which notification transport is active.
+2. **Appointment Boundary:**
+   - V1: `Appointment Service -> Manual Front-Desk Confirmation` (phone call, direct WhatsApp link).
+   - Future: `Appointment Service -> Manual confirmation, Calendar, HIS`.
+   - The public appointment booking request interface does not change when calendar or HIS integrations are added.
+3. **Optional Payment Boundary:**
+   - V1: No payments collected; appointments are booking requests.
+   - Future: Pluggable checkout session adapter. No payment SDKs or tables in V1.
+4. **Optional AI Boundary:**
+   - V1: Completely offline; no AI dependencies.
+   - Future: Advisory non-clinical assistant.
+5. **System Resilience Guarantee:**
+   - The core system must continue functioning normally if any optional external integration is unavailable, times out, or fails.
+
+---
+
+## 7. AI Boundary (Strict Non-Clinical Scope)
+
+Future AI integration is strictly limited to an optional administrative layer:
+
+### Permitted Future Administrative Use Cases:
+- Enquiry categorization and department routing
+- Content drafting assistance (hospital news, notices, health awareness posts)
+- FAQ drafting and polishing
+- Administrative operational summaries for front-desk handovers
+- Public website search assistance for clinic timings and services
+
+### Strictly Prohibited AI Capabilities:
+> [!CAUTION]
+> AI must **NEVER** be used for:
+> - Medical diagnosis
+> - Symptom triage or symptom checking
+> - Treatment, therapy, or medication recommendations
+> - Clinical decision-making or advice
+> 
+> The core hospital platform is 100% independent of AI. If AI services are disconnected or fail, every operational feature remains fully functional.
+
+---
+
+## 8. Centralized Design System Reusability
+
+To ensure the core platform can be deployed for different clinics without rewriting UI components, visual styling is decoupled into centralized design tokens:
+
+### Token Categories:
+- **CSS Variables (`app/globals.css`):** Primary brand colors, secondary accents, alert colors, surface backgrounds, borders.
+- **Typography Tokens (`tailwind.config.ts`):** Font families (Inter/sans), font weights, scale presets.
+- **Color Tokens:** Semantic tokens (`bg-primary`, `text-primary-foreground`, `bg-secondary`, `bg-muted`).
+- **Spacing & Radius Tokens:** Standardized layout radii (`--radius-sm`, `--radius-md`, `--radius-lg`) and padding increments.
+- **Shadow Tokens:** Elevation levels (`shadow-sm`, `shadow-md`, `shadow-lg`).
+- **Responsive Breakpoints:** Consistent mobile-first breakpoints (`sm: 640px`, `md: 768px`, `lg: 1024px`, `xl: 1280px`).
+
+### Multi-Hospital Theming Model:
+```text
+Hospital A (Spandan)  ──>  Theme Tokens (Navy / Teal)    ──>  Reusable Component Library
+Hospital B (Future)   ──>  Theme Tokens (Emerald / Gold) ──>  Reusable Component Library
+```
+Components consume semantic tokens instead of hardcoded hospital colors. Re-skinning requires updating CSS variables, not touching component code.
+
+---
+
+## 9. Content Governance Model
+
+Hospital administrators and receptionists control **structured content**, while the development team maintains design and code:
+
+| Content Area | Managed By Hospital Staff? | Interface / Tool |
+| :--- | :--- | :--- |
+| **Doctor profiles & OPD hours** | Yes | Structured admin form (`/admin/doctors`) |
+| **Clinical services & facilities** | Yes | Structured admin form (`/admin/services`) |
+| **Patient testimonials** | Yes (Approval/Feature) | Structured admin table (`/admin/testimonials`) |
+| **Hospital contact numbers & hours**| Yes | Structured settings form (`/admin/settings`) |
+| **Announcement banner** | Yes (Text & toggle) | Structured settings form (`/admin/settings`) |
+| **Page layouts & templates** | **No** | Fixed in Next.js code by development team |
+| **Custom HTML / CSS editing** | **No** | Strictly forbidden for stability and security |
+| **Drag-and-drop page builders** | **No** | Not included; prevents visual breakage |
+
+---
+
+## 10. Future Extensibility & Roadmap Summary
+
+1. **Multi-Hospital Reuse:** Single-tenant modular monolith. Independent repository deployments with tailored configuration and design tokens allow rapid delivery for subsequent clinics without SaaS multi-tenancy bloat.
+2. **Feature Flags:** Future option only. No feature-flag system or `lib/config/features.ts` is created in V1.
+3. **Future Reuse Principle:**
+   > **"Build reusable foundations, not speculative features."**  
+   > A feature becomes part of the core platform only when it is needed by the current product or is clearly reusable infrastructure required by multiple real features. Do not implement something only because it may be useful years later.

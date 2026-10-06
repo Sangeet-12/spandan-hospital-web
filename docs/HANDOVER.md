@@ -2,25 +2,28 @@
 
 > **Document Type:** Operational Handover Manual & Commercial Model  
 > **Client:** Spandan Hospital (Doctor Owners & Administration Staff)  
-> **Commercial Package Value:** ~₹30,000 (Inclusive of 1st-Year Custom Domain & Netlify Production Deployment)
+> **Commercial Package Value:** ~₹30,000 (Inclusive of 1st-Year Custom Domain & Netlify Production Deployment)  
+> **Architecture Paradigm:** **Reusable Hospital Digital Platform** (`CORE PLATFORM + HOSPITAL CONFIGURATION + OPTIONAL FEATURE MODULES`) deployed as a Single-Hospital Modular Monolith
 
 ---
 
 ## 1. Technical & Commercial Ownership Model
 
-Responsibilities are clearly demarcated between Spandan Hospital and the developer:
+The application is architected as a **Reusable Hospital Digital Platform**. This model establishes a clean boundary between generic platform infrastructure and client-specific business assets:
 
 ### What Spandan Hospital Owns
 1. **Custom Domain Name:** The hospital owns the custom domain (`spandanhospital.in` or similar) registered under their business identity.
-2. **Business & Patient Data:** All patient appointment leads, doctor profiles, consultation schedules, and hospital settings stored in the database belong 100% to Spandan Hospital.
-3. **Operational Credentials:** Administrative credentials for the dashboard and direct operational access to notification inboxes.
+2. **Business & Patient Data:** All patient appointment leads, doctor profiles, consultation schedules, infrastructure photos, and hospital settings stored in the database belong 100% to Spandan Hospital.
+3. **Hospital-Specific Configuration:** Custom branding tokens (colors, logo, tagline), hero content, and announcement banners.
+4. **Operational Credentials:** Administrative credentials for the dashboard and direct operational access to notification inboxes.
 
 ### What the Developer Maintains
-1. **Codebase & Architecture:** The modular monolith repository, reusable components, and build configurations.
-2. **Hosting & Deployment Pipeline:** Netlify CI/CD connections, Supabase project configuration, and DNS records.
-3. **Technical Security & Reliability Monitoring:** Monitoring uptime, framework patches, and disaster recovery support.
-4. **Maintenance Agreement (Optional Annual Retainer):** Assisting with Year 2 domain renewal, SSL maintenance, quarterly data backups, and technical support.
-5. **Future Upgrades Roadmap:** Optional future commercial expansions (online payments, automated WhatsApp bots, patient portal accounts) can be added seamlessly without rebuilding the core website.
+1. **Core Platform Architecture:** The reusable modular monolith framework, component library, authentication flows, data access patterns, and build configurations.
+2. **Multi-Hospital Reuse Freedom:** The developer retains full rights to the generic core platform engine and can deploy isolated, single-tenant instances for other clinics using separate configurations and databases without building complex multi-tenant SaaS engines.
+3. **Hosting & Deployment Pipeline:** Netlify CI/CD connections, Supabase project configuration, and DNS records.
+4. **Technical Security & Reliability Monitoring:** Monitoring uptime, framework patches, and disaster recovery support.
+5. **Maintenance Agreement (Optional Annual Retainer):** Assisting with Year 2 domain renewal, SSL maintenance, quarterly data backups, and technical support.
+6. **Future Upgrades Roadmap:** Optional future commercial expansions (online payments, automated WhatsApp bots, calendar booking, non-clinical AI assistance) can be plugged in as modular add-ons without rebuilding the core website.
 
 ---
 
@@ -88,6 +91,14 @@ If hospital emergency phone numbers or operating hours change:
    - Enter alert text (e.g., *"Free Diabetes Health Checkup Camp this Sunday 9 AM - 2 PM"*).
    - Toggle banner active/inactive.
 4. Click **"Save Settings"**. Updates appear across the public website immediately.
+
+---
+
+### F. Content Integrity & Safety Boundaries
+To protect the hospital portal from visual breakage, accidental layout corruption, and security vulnerabilities:
+- Staff manage content **exclusively via structured admin forms**.
+- The dashboard does not include or permit raw HTML editors, custom CSS inputs, or free-form page builders.
+- Page layouts, responsive formatting, and typography/color tokens are managed safely in code by the developer.
 
 ---
 

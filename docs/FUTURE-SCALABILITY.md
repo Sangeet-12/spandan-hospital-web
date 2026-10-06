@@ -1,21 +1,59 @@
 # Future Scalability & Architecture Extensibility Guide
 
 > **Target:** Spandan Hospital Web Portal  
-> **Philosophy:** Build a clean, beginner-friendly Modular Monolith for V1 while establishing clear architectural boundaries that allow seamless future growth without rewrites.  
-> **Golden Rule:** Do NOT build speculative features in V1. Build clean boundaries today; add features when requested tomorrow.
+> **Architecture Paradigm:** **Reusable Hospital Digital Platform** (`CORE PLATFORM + HOSPITAL CONFIGURATION + OPTIONAL FEATURE MODULES`)  
+> **V1 Deployment:** Single-Hospital Modular Monolith at Repository Root (Spandan Hospital)  
+> **Hosting Target:** Netlify (Commercial Free Tier)  
+> **Database:** Supabase (PostgreSQL + Auth + Storage)  
+> **Golden Rule of Reusability:** **Build reusable foundations, not speculative features.** Build clean boundaries today; add features when requested tomorrow.
 
 ---
 
-## 1. Architectural Vision: Modular Monolith
+## 1. Architectural Vision: Reusable Platform Modular Monolith
 
-Spandan Hospital is a small, doctor-owned hospital (two operating doctors). An enterprise microservice architecture or distributed service mesh would be fatal to solo-developer maintainability and commercial viability.
+Spandan Hospital is a small, doctor-owned hospital (two operating doctors). An enterprise microservice architecture, distributed service mesh, or full multi-tenant SaaS engine would create excessive operational friction and maintenance overhead for a solo beginner developer.
 
-Instead, the system is designed as a **Modular Monolith**:
-- Everything runs inside a single Next.js application at the repository root.
-- Code is segregated into distinct, self-contained **feature modules** inside `/features`.
-- Each feature module owns its data access, validation, business logic, and UI components.
-- Shared primitives live in `/components/ui` and `/lib`.
-- There are **no enterprise abstractions**: no generic repository factories, no universal CRUD engines, no dependency injection containers, and no microservices. Simple functions and explicit files are used throughout.
+Instead, the system is designed as a **Reusable Hospital Digital Platform**:
+$$\text{Platform} = \text{CORE PLATFORM} + \text{HOSPITAL CONFIGURATION} + \text{OPTIONAL FEATURE MODULES}$$
+
+### The Three Architectural Layers:
+1. **CORE PLATFORM:** Reusable across multiple hospital deployments:
+   - Public marketing framework & pre-rendered pages (SSG/ISR)
+   - Admin dashboard framework with tabular views and CSV export
+   - Authentication (Supabase SSR cookies) & authorization (RLS roles)
+   - Enquiry pipeline & appointment booking requests
+   - Doctors, services, testimonials, and hospital settings management
+   - Notification dispatching engine (`PENDING`, `SENT`, `FAILED`)
+   - Media storage pipelines (Supabase Storage)
+   - Validation (Zod) & security (Cloudflare Turnstile)
+   - Health monitoring (`/api/health`) & error handling
+   - Centralized design system token consumers
+   *No core platform code contains hardcoded Spandan-specific content.*
+
+2. **HOSPITAL CONFIGURATION:** Client-specific data and visual branding:
+   - Hospital name, logo, brand colors, tagline
+   - Hero headlines, subtext, and hero photography
+   - Doctors, services, testimonials, and department descriptions
+   - Emergency numbers, desk numbers, WhatsApp hotline (`wa.me`)
+   - Address, Google Maps embed, OPD schedules, infrastructure photos
+   - Homepage announcement banners
+   *Rule:* Configuration is stored in database tables (`hospital_settings`, `doctors`, etc.) or defined in centralized design tokens (`globals.css`), never hardcoded in React components.
+
+3. **OPTIONAL FEATURE MODULES:** Independent add-ons for future phases:
+   - WhatsApp Cloud API automated notifications
+   - SMS gateway alerts (DLT-compliant)
+   - Online payments (Razorpay / Cashfree)
+   - Doctor calendar sync & real appointment slot availability
+   - Patient self-service portal
+   - Advanced analytics
+   - AI-assisted administrative tools (strictly non-clinical)
+   - Hospital Information System (HIS) / EMR sync
+   *Rule:* Do not install SDKs or build speculative tables in V1.
+
+### Single-Hospital V1 Scope (Strictly NO Multi-Tenant SaaS)
+- The initial deployment is strictly single-tenant for Spandan Hospital.
+- **Do NOT build in V1:** Tenant routing, tenant isolation middleware, tenant billing, tenant switching, or tenant super-admin panels.
+- Future hospital clients receive their own isolated deployment using the same repository and architecture with their own configuration and database.
 
 ---
 
@@ -211,29 +249,72 @@ External Hospital HIS / EMR / Lab Reporting System
 
 ## 8. Multi-Hospital Reusability Strategy
 
-While this project is built exclusively for Spandan Hospital, the architecture is designed so the solo developer can deliver a similar portal for **Hospital B** in the future in just a few hours.
+While this project's initial deployment is built exclusively for Spandan Hospital, the architecture is engineered as a **Reusable Hospital Digital Platform**. The developer can deliver an identical, production-ready portal for **Hospital B** in the future in just a few hours without touching application code.
 
-### How Reusability Works (Without SaaS Multi-Tenancy Complexity)
-1. **Single-Tenant Repositories:** Keep each hospital as an independent, isolated deployment. Avoid multi-tenant database partitioning, shared databases, or cross-tenant data leakage risks.
-2. **Configurable Branding:** All hospital names, director quotes, phone numbers, and addresses live in `hospital_settings` and `lib/config/hospital.ts`.
-3. **Design Tokens:** Primary colors, secondary accents, and fonts are controlled via CSS variables in `globals.css` and `tailwind.config.ts`.
-4. **Instant Duplication:** Fork repository, update 5 branding tokens, execute standard database migrations in `/database/migrations/`, deploy to Netlify.
+### The Reusable Platform Pattern (Single-Tenant Reusability)
+Instead of building an error-prone, complex multi-tenant SaaS engine with tenant routing and shared tables, reusability is achieved through clean separation:
+
+$$\text{Instance} = \text{Core Platform Code (Reusable)} + \text{Hospital Database & Config (Client-Specific)}$$
+
+1. **Independent Deployments:** Each hospital receives an isolated Next.js deployment on Netlify and an isolated Supabase project. There is zero risk of cross-tenant patient data leakage.
+2. **Configurable Hospital Settings:** All business identifiers (name, tagline, phone numbers, emergency hotlines, OPD hours, map links, announcements) live in `hospital_settings` and `lib/config/hospital.ts`.
+3. **Structured Content Tables:** Doctors, services, and testimonials are populated via migrations or the admin UI per client.
+4. **Theme Customization:** Re-theming is accomplished strictly by adjusting design tokens (`globals.css`), requiring zero changes to UI components.
+5. **Rapid Client Onboarding:**
+   - Clone/fork the repository for Hospital B.
+   - Run standard migrations in `/database/migrations/`.
+   - Update 5 brand color tokens in `globals.css`.
+   - Seed Hospital B's initial doctors, services, and contact numbers.
+   - Connect to Netlify and assign the client's custom domain.
+
+### The Future Reuse Principle
+> **"Build reusable foundations, not speculative features."**  
+>  
+> A capability becomes part of the core platform only when it is:  
+> 1. Needed by the current product (Spandan Hospital), OR  
+> 2. Clearly reusable infrastructure required by multiple real features.  
+>  
+> Do **NOT** implement something only because it may be useful years later. Speculative code adds testing overhead, maintenance debt, and confusion.
 
 ---
 
-## 9. Design System & Design Tokens Strategy
+## 9. Content Governance Model
 
-Branding colors and typography must never be hardcoded across components.
+A core principle of platform stability is strict boundary enforcement between code structure and hospital content:
 
-### Token Architecture
+```text
+Development Team ─── controls ─── Layout, Components, Responsive Design, Code
+Hospital Staff   ─── controls ─── Approved Structured Content (Doctors, Hours, Numbers)
+```
+
+### Content Boundaries:
+- **What Staff Controls:**
+  - Doctor profiles, qualifications, and consultation hours.
+  - Clinical department descriptions and facilities.
+  - Approving and featuring patient testimonials.
+  - Emergency, desk, and WhatsApp phone numbers.
+  - Homepage announcement banner message and active toggle.
+- **What Staff CANNOT Access (Strict Safeguards):**
+  - **No HTML or script injection:** Inputs are validated and sanitized strings.
+  - **No CSS or style editors:** Prevents brand distortion or contrast accessibility failures.
+  - **No drag-and-drop page builders:** Prevents broken responsive grids on mobile viewports.
+  - **No unrestricted layout changes:** Core page layouts remain rock-solid.
+
+---
+
+## 10. Centralized Design System & Design Tokens Strategy
+
+Branding colors, typography, and geometry must never be hardcoded across components.
+
+### Token Hierarchy:
 ```css
 /* app/globals.css */
 :root {
-  /* Brand Tokens */
-  --brand-primary: 215 80% 28%;      /* Deep Trust Navy */
-  --brand-secondary: 178 78% 38%;    /* Medical Teal / Cyan */
-  --brand-accent: 199 89% 48%;       /* Action Blue */
-  --brand-emergency: 0 84% 60%;      /* Emergency Alert Red */
+  /* Brand Identity Tokens */
+  --brand-primary: 215 80% 28%;      /* Hospital A Primary: Deep Trust Navy */
+  --brand-secondary: 178 78% 38%;    /* Hospital A Secondary: Medical Teal */
+  --brand-accent: 199 89% 48%;       /* Action Highlight: Cerulean */
+  --brand-emergency: 0 84% 60%;      /* Emergency Alert: Coral Red */
 
   /* Neutral Surface Tokens */
   --background: 0 0% 100%;
@@ -243,20 +324,21 @@ Branding colors and typography must never be hardcoded across components.
   --card: 0 0% 100%;
   --border: 214 32% 91%;
 
-  /* Layout Tokens */
+  /* Geometry & Radius Tokens */
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
 }
 ```
 
-### Rules:
-- Components use semantic Tailwind classes: `bg-primary`, `text-primary-foreground`, `border-border`.
-- To re-skin the website for another hospital with green/gold branding, the developer changes only 3 CSS variable definitions in `globals.css`.
+### Reusability Rules:
+- **Component Independence:** Components consume semantic classes (`bg-primary`, `text-primary-foreground`, `border-border`).
+- **Token Scope:** Covers CSS variables, typography tokens, color tokens, spacing tokens, radius tokens, shadow tokens, and responsive breakpoints.
+- **Client Theming:** Changing from Spandan Hospital (Navy/Teal) to a second client (e.g., Emerald/Gold) requires altering CSS variable definitions in `globals.css` without modifying a single JSX/TSX component.
 
 ---
 
-## 10. Feature Flags Strategy (Future Option — Not Built in V1)
+## 11. Feature Flags Strategy (Future Option — Not Built in V1)
 
 **V1 Status:** No feature-flag system or `lib/config/features.ts` is created for V1. The initial product has a lean, fixed V1 feature boundary.
 
@@ -284,7 +366,7 @@ export const FEATURE_FLAGS = {
 
 ---
 
-## 11. Application Semantic Versioning
+## 12. Application Semantic Versioning
 
 The project uses clean Semantic Versioning (`MAJOR.MINOR.PATCH`) tracked via Git tags:
 
@@ -296,7 +378,7 @@ The project uses clean Semantic Versioning (`MAJOR.MINOR.PATCH`) tracked via Git
 
 ---
 
-## 12. Solo-Developer Maintainability: "Where is X?" Guide
+## 13. Solo-Developer Maintainability: "Where is X?" Guide
 
 Whenever you or another developer need to find or modify code, use this direct map:
 
@@ -311,6 +393,7 @@ Whenever you or another developer need to find or modify code, use this direct m
 | **Where are feature flags?** | Future option only; not built in V1 (see `docs/FUTURE-SCALABILITY.md`) |
 | **Where are database migrations?** | `database/migrations/` |
 | **Where are branding colors & fonts?** | `app/globals.css` & `tailwind.config.ts` |
+| **Where is hospital configuration?** | `hospital_settings` DB table & `lib/config/hospital.ts` |
 | **How do I test a build locally?** | Run `npm run build` in terminal |
 | **How do I deploy?** | Push to `main` branch on GitHub; Netlify builds automatically |
 | **How do I roll back a broken deploy?** | In Netlify Dashboard > **Deploys**, click previous deploy > **Publish deploy** |
